@@ -35,3 +35,15 @@
 5. 统计分析词项数量与文档数量、文档长度(词条数目)，词条数量  
 
 第二部分是research能力与开发能力并重的，可以使用开源软件提升检索能力，也可以自己实现检索器
+
+
+## Parser Doc get index file
+	`python corpusParser.py -f shakespeare-merchant.trec.1 -s stopword`
+
+	Start......
+	dump index from memory to file shakespeare-merchant.trec.1.index.txt
+	----------------------------------------------------------
+	finish
+	----------------------------------------------------------
+	Total time analysis:
+	(1.9920001029968262, 's')
