@@ -9,7 +9,25 @@ from indexing.index import Index
 
 N = 15
 
+class Weight:
+    tf = 0
+    df = 0
+    def __init__(tf, df, N):
+        if tf > 0 and df > 0 and N > 0:
+            self.tf = tf
+            self.df = df
+            self.N = N
+        else:
+            raise ValueError("Please input right initilize data")
 
+    @property
+    def idf():
+        return math.log(self.N / self.df, 10)
+    @property
+    def w():
+        return (1 + math.log(self.tf, 10) * self.idf)
+    def __del__():
+        pass
 def usage():
     print "Usage:"
     print "\tpython "+ sys.argv[0]+" [-r number] -w warc_file_name -q free_query_text"
@@ -58,7 +76,7 @@ def query_weight(query_string, dicts, idx_file):
             query_table[term]["w"] = 0
     return (query_table, docs_set, term_index)
 
-def docs_weight(docs_set, term_index, query_table):
+def docs_weight(docs_set, term_index, query_string, query_table):
     docs_table = {}
     # Calculate query's weight
     while True:
@@ -81,6 +99,7 @@ def docs_weight(docs_set, term_index, query_table):
             else:
                 docs_table[doc][term]["w"] = 0
     return docs_table
+
 def cos_vector_space_model(query_table, docs_table):
     query_len = 0
     docs_score = {}
@@ -98,23 +117,7 @@ def cos_vector_space_model(query_table, docs_table):
         docs_score[doc] = up_part / (math.sqrt(doc_len) * query_len)
     return docs_score
 
-def query(file_name, query_string):
-    return_count = 10
-    # parse parameters
-    #if len(sys.argv) >= 3:
-    #    if "-w" in sys.argv:
-    #        file_name = sys.argv[sys.argv.index("-w") + 1]
-    #    else:
-    #        usage()
-    #    if "-r" in sys.argv:
-    #        return_count = int(sys.argv[sys.argv.index("-r") + 1])
-
-    #   if "-q" in sys.argv:
-    #        query_string = sys.argv[sys.argv.index("-q") + 1:]
-    #    else:
-    #        usage()
-    #else:
-    #    usage()
+def query(file_name, query_string, return_count = 10):
 
     # set idx file and dict file path
     idx_file = file_name + ".index.txt"
@@ -145,10 +148,9 @@ def query(file_name, query_string):
     # stem the query string
     query_string = stem_query(query_string)
 
-    # Calculate query's weight
     (query_table, docs_set, term_index) = query_weight(query_string, dicts, idx_file)
-    # Calculate docs's weight
-    docs_table = docs_weight(docs_set, term_index, query_table)
+
+    docs_table = docs_weight(docs_set, term_index, query_string, query_table)
 
     docs_score = cos_vector_space_model(query_table, docs_table)
 
@@ -160,36 +162,31 @@ def query(file_name, query_string):
         return_count -= 1
         if return_count < 0:
             break
-        print("%d\t%.3f" % (int(i), docs_score[i]))
-    print query_table
+        print "%d\t%.3f" % (int(i), docs_score[i])
 
 
-if __name__ == "__main__":
-    #if "-h" in sys.argv:
-    #    usage()
-    #elif "-q" in sys.argv:
+def main():
+    return_count = 10
+    #parse parameters
+    if len(sys.argv) >= 3:
+        if "-w" in sys.argv:
+            file_name = sys.argv[sys.argv.index("-w") + 1]
+        else:
+            usage()
+        if "-r" in sys.argv:
+            return_count = int(sys.argv[sys.argv.index("-r") + 1])
+
+        if "-q" in sys.argv:
+            query_string = sys.argv[sys.argv.index("-q") + 1:]
+        else:
+            usage()
+    else:
+        usage()
     file_name = 'shakespeare-merchant.trec.1'
 
     query_string = 'hello, my name is caowenlong, my favoriate dog is doges, shakespeare merchant'.replace(',','').split()
-    query(file_name, query_string)
-    #else:
-    #    usage()
-class Weight:
-    tf = 0
-    df = 0
-    def __init__(tf, df, N):
-        if tf > 0 and df > 0 and N > 0:
-            self.tf = tf
-            self.df = df
-            self.N = N
-        else:
-            raise ValueError("Please input right initilize data")
+    query(file_name, query_string, return_count)  
 
-    @property
-    def idf():
-        return math.log(self.N / self.df, 10)
-    @property
-    def w():
-        return (1 + math.log(self.tf, 10) * self.idf)
-    def __del__():
-        pass
+if __name__ == "__main__":
+    main()
+
