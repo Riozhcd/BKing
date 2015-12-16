@@ -78,7 +78,7 @@ class CorpusParser:
 		if self.word_map[word].size == 0:
 			self.word_map[word].name = word
 
-		self.word_map[word].map.setdefault(self.doc_id,doc_item_default)
+		self.word_map[word].map.setdefault(self.doc_id, doc_item_default)
 
 		if self.word_map[word].map[self.doc_id].size == 0:
 			self.word_map[word].map[self.doc_id].id = self.doc_id
@@ -87,7 +87,7 @@ class CorpusParser:
 		self.word_map[word].map[self.doc_id].size += 1
 		self.word_map[word].map[self.doc_id].list.append(self.line_id)
 
-	def dump_index(self, index_file):
+	def dump_index_bracket(self, index_file):
 		with open(index_file, 'w+') as index_out_file,\
 				open(self.corpus+'.dict.txt', 'w+') as dict_out_file:
 			for k0, v0 in self.word_map.items():
@@ -98,6 +98,17 @@ class CorpusParser:
 					index_out_file.write(str(k1)+','+str(v1.size)+':'+tmp+';')
 				index_out_file.write('>;\n')
 
+	def dump_index(self, index_file):
+		with open(index_file, 'w+') as index_out_file,\
+				open(self.corpus+'.dict.txt', 'w+') as dict_out_file:
+			for k0, v0 in self.word_map.items():
+				dict_out_file.write(k0 + ", " + str(index_out_file.tell()) + "\n")
+				index_out_file.write(k0+','+str(v0.size)+':')
+				for k1,v1 in v0.map.items():
+					tmp=str(v1.list).replace('[','').replace(']','')
+					
+					index_out_file.write(str(k1)+','+str(v1.size)+':'+tmp+';')
+				index_out_file.write(';\n')
 
 	def __del__(self):
 		pass
@@ -138,17 +149,17 @@ def main():
 
 	starttime = time.time()
 
-	print("Start......")
+	print "Start......"
 
 	parser.handle_data()
 	parser.dump_index(index_file)
 
-	print("dump index from memory to file " + index_file)
-	print("----------------------------------------------------------")
-	print("finish")
-	print("----------------------------------------------------------")
-	print("Total time analysis:")
-	print(time.time() - starttime, "s")
+	print "dump index from memory to file " + index_file
+	print "----------------------------------------------------------"
+	print "finish"
+	print "----------------------------------------------------------"
+	print "Total time analysis:"
+	print time.time() - starttime, "s"
 
 if __name__ == '__main__':
 	main()
