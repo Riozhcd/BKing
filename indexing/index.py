@@ -16,9 +16,9 @@ class Index:
             open(filename + ".dict", "w+") as fdic:
             for k, v in ((k, self.index[k]) for k in sorted(self.index)):
                 fdic.write(k + ", " + str(f.tell()) + "\n")
-                f.write(k + ", " + str(len(v)) + ":<")
+                f.write(k + ", " + str(len(v)) + ":")
                 for doc in v:
-                    f.write(str(doc) + ", " + str(len(v[doc])) + ":<")
+                    f.write(str(doc) + ", " + str(len(v[doc])) + ":")
                     fr = True
                     for pos in v[doc]:
                         if fr:
@@ -26,8 +26,8 @@ class Index:
                             fr = False
                         else:
                             f.write(", " + str(pos))
-                    f.write(">;")
-                f.write(">;\n")
+                    f.write(";")
+                f.write(";\n")
 
     @staticmethod
     def read(filename):

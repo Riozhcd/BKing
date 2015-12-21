@@ -28,6 +28,7 @@ class Weight:
         return (1 + math.log(self.tf, 10) * self.idf)
     def __del__():
         pass
+
 def usage():
     print "Usage:"
     print "\tpython "+ sys.argv[0]+" [-r number] -w warc_file_name -q free_query_text"

@@ -4,6 +4,7 @@ import os.path
 import time
 import re
 from optparse import OptionParser
+from collections import OrderedDict
 from stemming.pyporter2 import stem
 
 class doc_item:
@@ -11,15 +12,22 @@ class doc_item:
 		self.id = 0
 		self.size = 0
 		self.list = []
-
+	def __str__(self):
+		result = str(self.size)+':'+str(self.list).replace('[','').replace(']','')
+		return result
 class word_item:
 	def __init__(self):
 		self.name = ''    
 		self.size = 0     
 		self.map ={}
+	def __str__(self):
+		resultstr = self.name+','+str(self.size)+':'
+		for k1, v1 in self.map.items():
+			resultstr =resultstr+str(k1)+','+str(v1)+';'
+		return resultstr 
 
 def split_words(line):
-	regex = ur"[<.*?>|,|.|:|?|!|\"|\(|\)|/|;|\-|\[|\]]"
+	regex = ur"[\d*|<.*?>|,|.|:|?|!|\"|\(|\)|/|;|\-|\[|\]]"
 	line = re.sub(regex, ' ', line).strip()
 
 	regex = ur"\s+"
@@ -42,8 +50,7 @@ class CorpusParser:
 		self.word_map, self.stop_map, self.regex = {}, {} ,{}
 		if os.path.isfile(stopword_file):
 			with open (stopword_file,'r') as f:
-				for line in f:
-					self.stop_map[line.strip()] = 1
+				for line in f: self.stop_map[line.strip()] = 1
 
 		
 		self.regex['DOCNO'] = ur"<DOCNO>(.*?)</DOCNO>"
@@ -101,13 +108,11 @@ class CorpusParser:
 	def dump_index(self, index_file):
 		with open(index_file, 'w+') as index_out_file,\
 				open(self.corpus+'.dict.txt', 'w+') as dict_out_file:
+			self.word_map = OrderedDict(sorted(self.word_map.items(), key=lambda t: t[0]))
+
 			for k0, v0 in self.word_map.items():
-				dict_out_file.write(k0 + ", " + str(index_out_file.tell()) + "\n")
-				index_out_file.write(k0+','+str(v0.size)+':')
-				for k1,v1 in v0.map.items():
-					tmp=str(v1.list).replace('[','').replace(']','')
-					
-					index_out_file.write(str(k1)+','+str(v1.size)+':'+tmp+';')
+				dict_out_file.write(k0 + "," + str(index_out_file.tell())+',' +str(v0.size) + "\n")
+				index_out_file.write(str(v0))
 				index_out_file.write(';\n')
 
 	def __del__(self):
