@@ -5,8 +5,8 @@ import os
 import math
 
 from stemming.pyporter2 import stem
-from indexing.index import Index
-
+from compress.index_gamma \
+import decompress_inverted_index, seek_inverted_index_file, decompress_dict
 N = 15
 
 class Weight:
@@ -58,13 +58,15 @@ def query_weight(query_string, dicts, idx_file):
 
     for term in query_string:
         if term in dicts:
-            term_index[term] = Index.read_index_by_offset(idx_file, dicts[term]).index[term]
+            term_index[term] = seek_inverted_index_file(idx_file, dicts[term], term)
+            print term_index[term]
+
             # add doc# to set
-            for doc in term_index[term]:
+            for doc in term_index[term].docitemmap:
                 docs_set.add(int(doc))
             query_table[term] = {}
             query_table[term]["tf"] = 1
-            query_table[term]["df"] = len(term_index[term])
+            query_table[term]["df"] = term_index[term].df
             
             query_table[term]["idf"] = math.log(N / query_table[term]["df"], 10)
             query_table[term]["w"] = (1 + math.log(query_table[term]["tf"])) * query_table[term]["idf"]
@@ -78,6 +80,7 @@ def query_weight(query_string, dicts, idx_file):
     return (query_table, docs_set, term_index)
 
 def docs_weight(docs_set, term_index, query_string, query_table):
+
     docs_table = {}
     # Calculate query's weight
     while True:
@@ -89,8 +92,10 @@ def docs_weight(docs_set, term_index, query_string, query_table):
         for term in query_string:
             docs_table[element][term] = {}
             docs_table[element][term]["tf"] = 0
-            if element in term_index[term]:
-                docs_table[element][term]["tf"] = len(term_index[term][str(element)])
+
+            if element in term_index:
+
+                docs_table[element][term]["tf"] = term_index[term][element].dtf
             
     for doc in docs_table:
         for term in query_string:
@@ -121,36 +126,26 @@ def cos_vector_space_model(query_table, docs_table):
 def query(file_name, query_string, return_count = 10):
 
     # set idx file and dict file path
-    idx_file = file_name + ".index.txt"
-    dict_file = file_name + ".dict.txt"
-
+    idx_file = file_name + ".index"
     # error detection
-    if not os.path.isfile(dict_file) or not os.path.isfile(idx_file):
+    if not os.path.isfile(idx_file):
         print "Error: index dictionary file(.index.dict or inverted index file (.index.idx) not found."
         exit(1)
 
     # read dict file to dict
-    dict_file = open(dict_file, 'r')
-    dicts = {}
-    for d in dict_file:
-        (key, offset) = d.split(', ')
-        dicts[key] = int(offset)
+    dicts = decompress_dict(idx_file)
+    
 
-    # term's index
-    term_index = {}
-    # query's parameter table
-    query_table = {}
     # docs's parameter table
     docs_table = {}
-    # docs set for merge document
-    docs_set = set()
+  
     # docs score hash, use cosine similarity score with weight use tf-idf
     docs_score = {}
     # stem the query string
     query_string = stem_query(query_string)
 
     (query_table, docs_set, term_index) = query_weight(query_string, dicts, idx_file)
-
+   
     docs_table = docs_weight(docs_set, term_index, query_string, query_table)
 
     docs_score = cos_vector_space_model(query_table, docs_table)
@@ -169,20 +164,20 @@ def query(file_name, query_string, return_count = 10):
 def main():
     return_count = 10
     #parse parameters
-    if len(sys.argv) >= 3:
-        if "-w" in sys.argv:
-            file_name = sys.argv[sys.argv.index("-w") + 1]
-        else:
-            usage()
-        if "-r" in sys.argv:
-            return_count = int(sys.argv[sys.argv.index("-r") + 1])
+    #if len(sys.argv) >= 3:
+    #    if "-w" in sys.argv:
+    #       file_name = sys.argv[sys.argv.index("-w") + 1]
+    #    else:
+    #        usage()
+    #   if "-r" in sys.argv:
+    #        return_count = int(sys.argv[sys.argv.index("-r") + 1])
 
-        if "-q" in sys.argv:
-            query_string = sys.argv[sys.argv.index("-q") + 1:]
-        else:
-            usage()
-    else:
-        usage()
+    #    if "-q" in sys.argv:
+    #        query_string = sys.argv[sys.argv.index("-q") + 1:]
+    #    else:
+    #        usage()
+    #else:
+    #   usage()
     file_name = 'shakespeare-merchant.trec.1'
 
     query_string = 'hello, my name is caowenlong, my favoriate dog is doges, shakespeare merchant'.replace(',','').split()

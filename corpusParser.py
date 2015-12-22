@@ -1,4 +1,11 @@
 # coding=utf-8
+# author: wei zhang
+# update: wenlong cao
+# create: 2015-12-10
+# description:
+# Read corpus file and parser into a inverted index
+# then compress the inverted index into a file
+# Update point: Update the offset from the line id into a doc offset
 import sys
 import os.path
 import time
@@ -7,31 +14,14 @@ from optparse import OptionParser
 from collections import OrderedDict
 from stemming.pyporter2 import stem
 
-class doc_item:
-	def __init__(self):
-		self.id = 0
-		self.size = 0
-		self.list = []
-	def __str__(self):
-		result = str(self.size)+':'+str(self.list).replace('[','').replace(']','')
-		return result
-class word_item:
-	def __init__(self):
-		self.name = ''    
-		self.size = 0     
-		self.map ={}
-	def __str__(self):
-		resultstr = self.name+','+str(self.size)+':'
-		for k1, v1 in self.map.items():
-			resultstr =resultstr+str(k1)+','+str(v1)+';'
-		return resultstr 
-
+from indexing.inverted_index import DocItem, PostingList, InvertedIndex
+import compress.index_gamma as IndexCompress
 def split_words(line):
 	regex = ur"[\d*|<.*?>|,|.|:|?|!|\"|\(|\)|/|;|\-|\[|\]]"
-	line = re.sub(regex, ' ', line).strip()
+	l = re.sub(regex, ' ', line).strip()
 
 	regex = ur"\s+"
-	line_words = re.split(regex, line)
+	line_words = re.split(regex, l)
 	return line_words
 
 class CorpusParserInitError(Exception):
@@ -40,78 +30,91 @@ class CorpusParserInitError(Exception):
 class CorpusParser:
 
 	def __init__(self, corpus_file, stopword_file,
-	                   doc_id_file = 'doc_id.txt'):
+	                   doc_id_file = 'doc_id.docID'):
 		if os.path.isfile(corpus_file):
 			self.corpus = corpus_file
 		else:
 			raise CorpusParserInitError("Please input a correct corpus file path")
 
-		self.doc_id, self.line_id = 0, 1
+		self.doc_id = 0
+		self.doc_offset = 0
 		self.word_map, self.stop_map, self.regex = {}, {} ,{}
 		if os.path.isfile(stopword_file):
 			with open (stopword_file,'r') as f:
 				for line in f: self.stop_map[line.strip()] = 1
-
 		
 		self.regex['DOCNO'] = ur"<DOCNO>(.*?)</DOCNO>"
-		self.doc_id_output = corpus_file + '.docID.txt'
+		self.doc_id_output = corpus_file + '.docID'
 
 	def __match_docheader(self, line, regex):
 		return re.search(regex, line)
 
 	def handle_data(self):
+		'''
+		Note:
+			The word item site from the line number to doc file offset
+		'''
 		with open(self.doc_id_output, 'w+') as doc_file, \
 		     open(self.corpus, 'r') as corpus:
-
 		    for line in corpus:
+				offset_inline = 0
 				match = self.__match_docheader(line, self.regex['DOCNO'])
 				if match:
-					self.line_id, self.doc_id = 1, self.doc_id + 1
+					self.doc_id = self.doc_id + 1
+					self.doc_offset = 0
 					doc_file.write(match.groups()[0]+' '+str(self.doc_id)+'\n')
-				self.line_id += 1
+
 				line_words = split_words(line)
+				lastword = ''
 				for word in line_words:
+					offset_inline = line.find(word, offset_inline + len(lastword))
+					lastword = word	
 					# Stem reduction
 					word = stem(word).lower()
+					if self.stop_map.has_key(word) == False and len(word) != 0: 
+						self.__add_word_index(word, self.doc_offset + offset_inline)
+				self.doc_offset = self.doc_offset + len(line)
 
-					if self.stop_map.has_key(word) == False and len(word) != 0:
-						self.__add_word_index(word)
-
-	def __add_word_index(self, word):
-		word_item_default = word_item()
-		doc_item_default = doc_item()
-
+	def __add_word_index(self, word, offset):
+		word_item_default = PostingList()
+		doc_item_default = DocItem()
+		if offset < 0:
+			print word
+			return
 		self.word_map.setdefault(word, word_item_default)
-		if self.word_map[word].size == 0:
+		if self.word_map[word].df == 0:
 			self.word_map[word].name = word
 
-		self.word_map[word].map.setdefault(self.doc_id, doc_item_default)
+		self.word_map[word].docitemmap.setdefault(self.doc_id, doc_item_default)
 
-		if self.word_map[word].map[self.doc_id].size == 0:
-			self.word_map[word].map[self.doc_id].id = self.doc_id
-			self.word_map[word].size += 1
+		if self.word_map[word].docitemmap[self.doc_id].dtf == 0:
+			self.word_map[word].docitemmap[self.doc_id].id = self.doc_id
+			self.word_map[word].df += 1
 
-		self.word_map[word].map[self.doc_id].size += 1
-		self.word_map[word].map[self.doc_id].list.append(self.line_id)
+		self.word_map[word].docitemmap[self.doc_id].dtf += 1
+		self.word_map[word].docitemmap[self.doc_id].positions.append(offset)
 
 	def dump_index_bracket(self, index_file):
 		with open(index_file, 'w+') as index_out_file,\
-				open(self.corpus+'.dict.txt', 'w+') as dict_out_file:
+				open(self.corpus+'.dict', 'w+') as dict_out_file:
 			for k0, v0 in self.word_map.items():
 				dict_out_file.write(k0 + ", " + str(index_out_file.tell()) + "\n")
-				index_out_file.write(k0+','+str(v0.size)+':<')
-				for k1,v1 in v0.map.items():
+				index_out_file.write(k0+','+str(v0.df)+':<')
+				for k1,v1 in v0.docitemmap.items():
 					tmp=str(v1.list).replace('[','<').replace(']','>')
-					index_out_file.write(str(k1)+','+str(v1.size)+':'+tmp+';')
+					index_out_file.write(str(k1)+','+str(v1.dtf)+':'+tmp+';')
 				index_out_file.write('>;\n')
 
 	def dump_index(self, index_file):
+		self.word_map = OrderedDict(sorted(self.word_map.items(), key=lambda t: t[0]))
+		IndexCompress.compress_inverted_index(self.word_map, index_file)
+		return 
 		with open(index_file, 'w+') as index_out_file,\
-				open(self.corpus+'.dict.txt', 'w+') as dict_out_file:
+				open(self.corpus+'.dict', 'w+') as dict_out_file:
 			self.word_map = OrderedDict(sorted(self.word_map.items(), key=lambda t: t[0]))
 
 			for k0, v0 in self.word_map.items():
-				dict_out_file.write(k0 + "," + str(index_out_file.tell())+',' +str(v0.size) + "\n")
+				dict_out_file.write(k0 +',' +str(v0.df)+"," + str(index_out_file.tell()) + "\n")
 				index_out_file.write(str(v0))
 				index_out_file.write(';\n')
 
@@ -141,11 +144,11 @@ def main():
    	corpus_file = opts.corpus
 	stopword_file = opts.stopword
 	if corpus_file and not opts.index:
-		index_file = corpus_file + '.index.txt'
+		index_file = corpus_file + '.index'
 	else:
 		index_file = opts.index
 
-	doc_id_file = corpus_file + '.docID.txt'
+	doc_id_file = corpus_file + '.docID'
 
 	try:
 		parser = CorpusParser(corpus_file, stopword_file)
