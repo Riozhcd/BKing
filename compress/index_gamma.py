@@ -30,8 +30,7 @@ def compress_inverted_index(inverted_index, filename):
 			else:
 	            # padding
 				f.write(struct.pack('B', int(gammadata[i:], 2)))
-	# TODO: write inverted index into file
-
+	#  write inverted index into file
 	with open(filename, 'wb') as f:
 		for key, postlist in inverted_index.items():
 			offset = f.tell()
@@ -46,10 +45,10 @@ def pregamma_handle_didlist(postlinglist):
 	def prehandle_dtlist(plist):
 		pl = sorted(plist)[::-1]
 		for i in range(len(plist) - 1):
-			pl[i] = pl[i] - pl[i + 1]
+			pl[i] -=  pl[i + 1]
 		pl = pl[::-1]
 		# Note: If the first element is 0, the Gamma cannot represent, so +1
-		pl[0] = pl[0] + 1
+		pl[0] += 1
 		return pl
 
 	resultpl = []
@@ -82,25 +81,25 @@ def degamma_didlist(l, name = ''):
 		if i + tf > len(l): raise PostingListInitError('The init postlist data is error: %s\n' % (str(l)))
 		dtl = succ_handle_dtlist(l[i:i + tf])
 		result[predocid] = DocItem(predocid, tf, dtl)
-		i = i + tf
+		i += tf
 	else:
 		raise PostingListInitError('The init postlist data is error: %s\n' % (str(l)))
 	
 	while i < len(l):
 		docid = predocid + l[i]
 		tf = l[i + 1]
-		i  = i + 2
+		i  += 2
 		if i + tf > len(l):
 			raise PostingListInitError('The init postlist data is error: %s\n' % (str(l)))
 		dtl = succ_handle_dtlist(l[i:i + tf])
-		i = i + tf
+		i += tf
 		result[docid] = DocItem(docid, tf, dtl)
 
 	return PostingList(_name = name, _df = len(result.keys()), _docmap = result)
 
 def write_postlist_gamma(f, offset, code_data):
 	f.seek(offset)
-	length = (len(code_data)-1) / 8 + 1
+	length = ((len(code_data)-1) >> 3) + 1
 	# using 4 Bytes
 	f.write(struct.pack('I', length))
 	# using length Bytes
@@ -143,6 +142,5 @@ def seek_inverted_index_file(indexfile, offset, word = ''):
 		left = ((((length - 1) >> 3) + 1) << 3) - length
 		datalist[-1] = '%s%s' % ('0' * (8 - left - len(datalist[-1])), datalist[-1])
 		encode_data = ''.join(datalist)
-		print degamma(encode_data)
 	return degamma_didlist(degamma(encode_data), word)
  

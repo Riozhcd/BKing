@@ -42,24 +42,24 @@ def degamma(str):
     while(i < len(str)):
         if(str[i] != '1'):
             a = [1]
-            j=0
+            j = 0
             for j in range(1, i - temp + 1):
                 a.append(int(str[i + j]))
             a.reverse()
             for k in range(0, len(a)):
-                num = num + a[k] * (2**k)
+                num += a[k] * (2**k)
             b.append(num)
-            i = i + j
+            i += j
             temp = i + 1
             num = 0
-        i=i+1
+        i += 1
     return b
 
 def gamma_list(l):
     gammastr = ''
 
     for i in l:
-        gammastr = gammastr + gamma(i)
+        gammastr += gamma(i)
     return gammastr
   
     

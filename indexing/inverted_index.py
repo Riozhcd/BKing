@@ -36,12 +36,20 @@ class InvertedIndex:
 	_index = {}
 	def __init__(self):
 		pass
+	@staticmethod
+	def get_posting_list(word):
+		return InvertedIndex._index[word]
 
 	@staticmethod
 	def add_word_postlist(word, postlist):
 		if word in InvertedIndex._index:
 			# merge
 			InvertedIndex._index[word] = \
-			InvertedIndex.merge(InvertedIndex._index[word], postlist)
+			PostingList.merge(InvertedIndex._index[word], postlist)
 		else:
 			InvertedIndex._index[word] = postlist
+	
+
+	@staticmethod
+	def InvertedIndex():
+		return InvertedIndex._index

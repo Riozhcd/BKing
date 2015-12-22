@@ -58,7 +58,7 @@ class SingleStringDict:
 
 	@staticmethod
 	def add_word(word, df, post_list_id):
-		SingleStringDict._Str = SingleStringDict._Str + word
+		SingleStringDict._Str += word
 		ssd = SingleStringDict(word = word, df  = df, post_list_id = post_list_id)
 		SingleStringDict._Dict[word] = ssd
 

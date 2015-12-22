@@ -60,7 +60,7 @@ class CorpusParser:
 				offset_inline = 0
 				match = self.__match_docheader(line, self.regex['DOCNO'])
 				if match:
-					self.doc_id = self.doc_id + 1
+					self.doc_id += 1
 					self.doc_offset = 0
 					doc_file.write(match.groups()[0]+' '+str(self.doc_id)+'\n')
 
