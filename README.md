@@ -38,7 +38,7 @@
 
 
 ## Parser Doc get index file
-	`python corpusParser.py -f shakespeare-merchant.trec.1 -s stopword`
+	`python corpusParser.py -w shakespeare-merchant.trec.1 -s stopword`
 
 	Start......
 	dump index from memory to file shakespeare-merchant.trec.1.index.txt
@@ -46,4 +46,4 @@
 	finish
 	----------------------------------------------------------
 	Total time analysis:
-	(1.9920001029968262, 's')
+	1.9920001029968262, 's'
